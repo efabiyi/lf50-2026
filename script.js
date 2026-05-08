@@ -41,33 +41,71 @@
 
   // Submit to Google Form
   const FORM_ACTION = 'https://docs.google.com/forms/d/e/1FAIpQLSe9WDtRbws7646cQAjp1BguHLtTZmlbcVAaX8gPxbLtZYJq5w/formResponse';
-
-  async function submitRSVP() {
+function submitRSVP() {
     const name  = document.getElementById('f-name').value.trim();
     if (!name) { alert('Please enter your name.'); return; }
 
     const attendVal  = attending === 'yes' ? 'Yes, I\'ll be there' : 'Sorry, can\'t make it';
     const plus1Val   = plus1     === 'yes' ? 'Yes' : 'No';
-    const plus1Name  = document.getElementById('f-plus1') ? document.getElementById('f-plus1').value.trim() : '';
+    let plus1Name = '';
+    
+    if (plus1 === 'yes') {
+        plus1Name = document.getElementById('f-plus1') ? document.getElementById('f-plus1').value.trim() : '';
+        if (!plus1Name) {
+            alert('Please enter your +1\'s name.');
+            return;
+        }
+    } else {
+        plus1Name = 'N/A';
+    }
 
-    const body = new URLSearchParams({
-      'entry.559352220': name,
-      'entry.307527039': attendVal,
-      'entry.877086558_sentinel': plus1Val,
-      'entry.924523986_sentinel': plus1Name,
-    });
+    // Create an iframe for submission
+    const iframeId = 'hidden-rsvp-iframe';
+    let iframe = document.getElementById(iframeId);
+    
+    if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = iframeId;
+        iframe.name = iframeId;
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+    }
 
-    try {
-      await fetch(FORM_ACTION, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body.toString()
-      });
-    } catch(e) { /* no-cors always throws, response is opaque — that's fine */ }
+    // Create form element
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = FORM_ACTION;
+    form.target = iframeId;
+    form.style.display = 'none';
 
+    // Add form fields
+    const fields = {
+        'entry.559352220': name,
+        'entry.877086558': attendVal,
+        'entry.924523986': plus1Val,
+        'entry.307527039': plus1Name
+    };
+
+    for (const [key, value] of Object.entries(fields)) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = value;
+        form.appendChild(input);
+    }
+
+    document.body.appendChild(form);
+    
+    // Submit and clean up
+    form.submit();
+    
+    setTimeout(() => {
+        document.body.removeChild(form);
+    }, 100);
+
+    // Show success message
     document.getElementById('rsvp-form').style.display = 'none';
     const msg = document.getElementById('success-msg');
     msg.style.display = 'block';
     document.getElementById('success-name').textContent = name.split(' ')[0];
-  }
+}
